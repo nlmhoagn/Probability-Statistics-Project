@@ -1,0 +1,70 @@
+{
+  "hardware_environment": {
+    "timestamp": "2026-10-28T13:11:03",
+    "os": "Windows 11 (10.0.26200)",
+    "machine": "AMD64",
+    "processor": "AMD64 Family 25 Model 117 Stepping 2, AuthenticAMD",
+    "python_version": "3.14.5",
+    "hash_algorithm": "SHA-256",
+    "timer_function": "time.perf_counter_ns"
+  },
+  "baseline_hash_rate_hps": 1122289.1,
+  "parameters": {
+    "samples_fast": 60,
+    "samples_heavy": 20,
+    "random_seed": 202610,
+    "total_observations": 340
+  },
+  "groups_surveyed": [
+    {
+      "charset": "full",
+      "K": 70,
+      "L": 1,
+      "axis": "axis1_length",
+      "search_space": 70
+    },
+    {
+      "charset": "full",
+      "K": 70,
+      "L": 2,
+      "axis": "axis1_length",
+      "search_space": 4900
+    },
+    {
+      "charset": "full",
+      "K": 70,
+      "L": 3,
+      "axis": "axis1_length",
+      "search_space": 343000
+    },
+    {
+      "charset": "digits",
+      "K": 10,
+      "L": 4,
+      "axis": "axis2_charset",
+      "search_space": 10000
+    },
+    {
+      "charset": "lowercase",
+      "K": 26,
+      "L": 4,
+      "axis": "axis2_charset",
+      "search_space": 456976
+    },
+    {
+      "charset": "alphanumeric",
+      "K": 62,
+      "L": 4,
+      "axis": "axis2_charset",
+      "search_space": 14776336
+    },
+    {
+      "charset": "full",
+      "K": 70,
+      "L": 4,
+      "axis": "both",
+      "search_space": 24010000
+    }
+  ],
+  "total_runtime_seconds": 435.63
+}

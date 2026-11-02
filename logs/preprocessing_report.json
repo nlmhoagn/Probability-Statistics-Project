@@ -1,0 +1,52 @@
+{
+  "total_raw": 340,
+  "missing_removed": 0,
+  "invalid_removed": 0,
+  "total_clean": 340,
+  "os_jitter_flagged": 16,
+  "bounds_by_group": {
+    "alphanumeric_L4": {
+      "q1_us": 1.0977,
+      "median_us": 1.1684,
+      "q3_us": 1.2334,
+      "upper_fence_us": 1.6404
+    },
+    "digits_L4": {
+      "q1_us": 0.7882,
+      "median_us": 0.807,
+      "q3_us": 0.8493,
+      "upper_fence_us": 1.0328
+    },
+    "full_L1": {
+      "q1_us": 0.7436,
+      "median_us": 0.7655,
+      "q3_us": 0.9,
+      "upper_fence_us": 1.3692
+    },
+    "full_L2": {
+      "q1_us": 0.8274,
+      "median_us": 0.8713,
+      "q3_us": 0.9911,
+      "upper_fence_us": 1.482
+    },
+    "full_L3": {
+      "q1_us": 0.8785,
+      "median_us": 0.9477,
+      "q3_us": 1.1009,
+      "upper_fence_us": 1.7684
+    },
+    "full_L4": {
+      "q1_us": 1.014,
+      "median_us": 1.0536,
+      "q3_us": 1.0845,
+      "upper_fence_us": 1.296
+    },
+    "lowercase_L4": {
+      "q1_us": 1.0603,
+      "median_us": 1.1188,
+      "q3_us": 1.236,
+      "upper_fence_us": 1.7632
+    }
+  },
+  "output_file": "data/processed_experiment_data.csv"
+}

@@ -1,0 +1,91 @@
+% ==============================================================================
+% Auto-generated LaTeX Booktabs Tables for MT2013 Report (2-Axis Design)
+% ==============================================================================
+
+% --- Table 1: Axis 1 - Length Effect Descriptive Statistics & CIs (Section 4.2) ---
+\begin{table}[htbp]
+\centering
+\caption{Axis 1: Experimental attempts ($A$) and cracking time ($T$, ms) across password lengths $L$ on full charset ($K=70$).}
+\label{tab:axis1_stats}
+\small
+\begin{tabular}{@{}cccccccc@{}}
+\toprule
+\textbf{$L$} & \textbf{$N = 70^L$} & \textbf{Theo. $\mathbb{E}[A]$} & \textbf{Emp. $\bar{A}$} & \textbf{95\% CI for $\mu_A$} & \textbf{$t$-stat} & \textbf{$p$-value} & \textbf{Emp. $\bar{T}$ (ms)} \\
+\midrule
+1 & 70 & 35.5 & 32.3 & $[27.2,\; 37.5]$ & -1.24 & 0.221 & 0.0291 \\
+2 & 4,900 & 2,450.5 & 2,606.7 & $[2,231.3,\; 2,982.0]$ & 0.83 & 0.408 & 2.3998 \\
+3 & 343,000 & 171,500.5 & 181,739.6 & $[156,283.5,\; 207,195.8]$ & 0.81 & 0.424 & 182.5359 \\
+4 & 24,010,000 & 12,005,000.5 & 11,157,454.2 & $[8,593,423.4,\; 13,721,485.0]$ & -0.69 & 0.497 & 11613.5411 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% --- Table 2: Axis 1 - Empirical Growth Ratios (Section 4.6) ---
+\begin{table}[htbp]
+\centering
+\caption{Axis 1: Empirical growth ratios when increasing password length $L \to L+1$ (Theoretical multiplier $K=70$).}
+\label{tab:axis1_growth}
+\begin{tabular}{@{}ccccc@{}}
+\toprule
+\textbf{Transition} & \textbf{Theoretical Factor ($K$)} & \textbf{Mean Attempts Ratio} & \textbf{Mean Time Ratio} & \textbf{Median Time Ratio} \\
+\midrule
+$L=1 -> L=2$ & 70.0 & 80.70 & 82.47 & 85.78 \\
+$L=2 -> L=3$ & 70.0 & 69.72 & 76.06 & 70.55 \\
+$L=3 -> L=4$ & 70.0 & 61.39 & 63.62 & 71.28 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% --- Table 3: Axis 2 - Charset Complexity Effect at L=4 (Section 4.3 & 4.7) ---
+\begin{table}[htbp]
+\centering
+\caption{Axis 2: Comparison of cracking time and security gain across 4 character set complexity levels ($L=4$).}
+\label{tab:axis2_stats}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+\textbf{Complexity Level} & \textbf{$K$} & \textbf{$N = K^4$} & \textbf{Emp. $\bar{T}$ (ms)} & \textbf{Med($T$) (ms)} & \textbf{Theo. Gain} & \textbf{Emp. Gain} \\
+\midrule
+Digits (0-9) & 10 & 10,000 & 4.1428 & 4.1316 & 1.0$\times$ & 1.0$\times$ \\
+Lowercase (a-z) & 26 & 456,976 & 282.5414 & 288.2120 & 45.7$\times$ & 68.2$\times$ \\
+Alphanumeric (0-9, a-z, A-Z) & 62 & 14,776,336 & 8752.4784 & 9146.6401 & 1,477.6$\times$ & 2,112.7$\times$ \\
+Full / Special (0-9, a-z, A-Z, !@#$%^&*) & 70 & 24,010,000 & 11613.5411 & 11344.2848 & 2,401.0$\times$ & 2,803.3$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% --- Table 4: One-Way ANOVA across Character Set Complexity Levels ---
+\begin{table}[htbp]
+\centering
+\caption{One-Way ANOVA table for log-transformed cracking time $\log_{10}(T)$ across character set complexity levels.}
+\label{tab:anova_charset}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Source of Variation} & \textbf{SS} & \textbf{df} & \textbf{MS} & \textbf{$F$-statistic} & \textbf{$p$-value} \\
+\midrule
+Between Groups (Complexity) & 296.342 & 3 & 98.781 & 737.94 & $< 10^{-15}$ \\
+Within Groups (Error)       & 20.882  & 156  & 0.1339 & & \\
+\midrule
+Total                        & 317.224   & 159 & & & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% --- Table 5: Security Trade-Off: Length (L) vs Complexity (K) (Section 4.10) ---
+\begin{table}[htbp]
+\centering
+\caption{Security trade-off analysis: Comparing character set expansion versus password length extension.}
+\label{tab:tradeoff_security}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Configuration Strategy} & \textbf{Complexity} & \textbf{$L$} & \textbf{Keyspace $N$} & \textbf{Est. Mean Time} & \textbf{Rel. Strength vs PIN} \\
+\midrule
+Baseline 4-digit PIN & Digits (K=10) & 4 & 10,000 & 0.0041 s & 1.0$\times$ \\
+Expand to Full Symbols (Keep L=4) & Full Special (K=70) & 4 & 24,010,000 & 11.6140 s & 2,401.0$\times$ \\
+Extend Length to 6 Digits (Keep K=10) & Digits (K=10) & 6 & 1,000,000 & 0.5000 s & 100.0$\times$ \\
+Extend Length to 8 Digits (Keep K=10) & Digits (K=10) & 8 & 100,000,000 & 50.0000 s & 10,000.0$\times$ \\
+Extend Length to 8 Full Characters & Full Special (K=70) & 8 & 576,480,100,000,000 & 80066.7 hours & 57,648,010,000.0$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}

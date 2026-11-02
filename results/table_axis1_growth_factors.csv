@@ -1,0 +1,4 @@
+transition,theoretical_factor,empirical_attempts_ratio,empirical_mean_time_ratio,empirical_median_time_ratio
+L=1 -> L=2,70.0,80.7,82.47,85.78
+L=2 -> L=3,70.0,69.72,76.06,70.55
+L=3 -> L=4,70.0,61.39,63.62,71.28
