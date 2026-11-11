@@ -69,9 +69,10 @@ Probability-Statistics-Project/
 
 ## 3. How to Execute the Pipeline
 
-Use Python 3.10 or newer (the included experiment was run with Python 3.14.5).
-The Python pipeline uses only the standard library; no pip dependencies are required.
-The optional `analysis.R` script uses base R's `stats` package and includes Tukey HSD.
+Use Python 3.10 or newer for the main pipeline (the included experiment was
+collected with Python 3.14.5). It uses the standard library; no pip install is
+required. For the optional report figures below use Python 3.11 or newer.
+The optional `analysis.R` script uses base R's `stats` package.
 
 Clone the repository and enter its root directory:
 
@@ -80,14 +81,11 @@ git clone https://github.com/nlmhoagn/Probability-Statistics-Project.git
 cd Probability-Statistics-Project
 ```
 
-Run the entire pipeline in sequence with a single command:
+### Reproduce the saved analysis
 
-```powershell
-python run_all.py
-```
-
-This collects fresh measurements and overwrites the generated outputs and experiment log.
-To reproduce the included results from the saved measurements, run these four steps:
+The saved raw data contains 340 measured trials. The group still needs to
+decide whether this dataset is the final submission dataset. To reproduce the
+tables, TikZ figures and Excel workbook from these measurements, run:
 
 ```powershell
 # Preprocess & feature engineering
@@ -112,3 +110,41 @@ each projection. A regression p-value stored as zero reflects floating-point und
 
 Run the regression tests with `python -m unittest -v`. They build outputs in
 temporary directories from the included CSV and experiment log.
+
+Scripts 02--05 overwrite derived files in `data/`, `results/`, `figures/` and
+`logs/preprocessing_report.json`, but do not recollect the raw measurements.
+The workbook's ZIP metadata can vary between runs. Check the numerical tables
+and the output of the tests rather than comparing Excel files byte-for-byte.
+
+### Regenerate the report figures
+
+The report uses the PDF figures created by Nguyen Nhat Huy's
+`report_figures/make_figures.py`. Their plotting dependencies are optional and
+were verified on Python 3.11.16 with the pinned versions below:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements-figures.txt
+.\.venv\Scripts\python.exe report_figures/make_figures.py
+```
+
+On macOS or Linux, use `.venv/bin/python` instead. Figures are written to
+`report_figures/output/` as PDF and PNG files. The mean-attempt confidence
+intervals use the same Student-t critical values as `03_statistical_analysis.py`.
+The script prints cross-checks against `results/table_axis1_length_stats.csv`.
+Rerun steps 02--03 first if the raw data changes, and upload updated PDFs to
+Overleaf when the results change. Rendering can vary with fonts and platform.
+
+### Collect a new dataset
+
+Only after preserving the existing data and experiment log, run:
+
+```powershell
+python run_all.py
+```
+
+This runs the experiment again and **overwrites the raw dataset and experiment
+log**, as well as downstream outputs. Measurements depend on the machine and
+system load; a fixed seed reproduces sampled targets, not measured times. The
+default collection uses 60 samples per small group, 20 per large group and
+seed `202610`; inspect options with `python 01_collect_data.py --help`.
