@@ -1,5 +1,5 @@
-charset_key,charset_name,charset_size_K,search_space_N,sample_size_n,mean_attempts,mean_time_ms,sd_time_ms,median_time_ms,iqr_time_ms,theoretical_security_gain,empirical_security_gain
-digits,Digits (0-9),10,10000,60,4794.5,4.1428,2.6049,4.1316,4.462,1.0,1.0
-lowercase,Lowercase (a-z),26,456976,60,247105.8,282.5414,148.5635,288.212,260.6278,45.7,68.2
-alphanumeric,"Alphanumeric (0-9, a-z, A-Z)",62,14776336,20,7518602.0,8752.4784,4945.0224,9146.6401,7803.6489,1477.6,2112.7
-full,"Full / Special (0-9, a-z, A-Z, !@#$%^&*)",70,24010000,20,11157454.2,11613.5411,5831.0256,11344.2848,8321.2934,2401.0,2803.3
+charset_key,charset_name,charset_size_K,search_space_N,sample_size_n,mean_attempts,mean_time_ms,sd_time_ms,ci95_time_low_ms,ci95_time_high_ms,median_time_ms,iqr_time_ms,theoretical_security_gain,empirical_security_gain
+digits,Digits (0-9),10,10000,60,4794.5,4.1428,2.6049,3.4699,4.8157,4.1316,4.462,1.0,1.0
+lowercase,Lowercase (a-z),26,456976,60,247105.8,282.5414,148.5635,244.1634,320.9194,288.212,260.6278,45.7,68.2
+alphanumeric,"Alphanumeric (0-9, a-z, A-Z)",62,14776336,20,7518602.0,8752.4784,4945.0224,6438.1366,11066.8201,9146.6401,7803.6489,1477.6,2112.7
+full,"Full / Special (0-9, a-z, A-Z, !@#$%^&*)",70,24010000,20,11157454.2,11613.5411,5831.0256,8884.5371,14342.5451,11344.2848,8321.2934,2401.0,2803.3

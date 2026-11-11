@@ -10,7 +10,6 @@ Generates publication-quality LaTeX/TikZ figures and PNG figures:
   2. fig2_axis1_regression   : Log-linear regression log10(T) vs Length L (K=70)
   3. fig3_axis2_boxplot      : Cracking time distribution across 4 Charset Levels (L=4)
   4. fig4_time_vs_attempts   : Linear relationship between Time (ms) and Attempts (A)
-  5. fig5_tradeoff_curves    : Security Trade-off: Length (L) vs Complexity (K)
 """
 
 import csv
@@ -39,7 +38,7 @@ def generate_tikz_plots(figures_dir: str, rows: list[dict], stats_summary: dict)
         "\\centering",
         "\\begin{tikzpicture}[xscale=8.5, yscale=3.2]",
         "  \\draw[->, thick] (0,0) -- (1.08,0) node[right, font=\\small] {$u = A / K^L$};",
-        "  \\draw[->, thick] (0,0) -- (0,1.45) node[above, font=\\small] {Density};",
+        f"  \\draw[->, thick] (0,0) -- (0,{max(1.45, max(densities) + 0.1):.2f}) node[above, font=\\small] {{Density}};",
     ]
     for i, dens in enumerate(densities):
         x0, x1 = i * 0.1, (i + 1) * 0.1
@@ -53,7 +52,7 @@ def generate_tikz_plots(figures_dir: str, rows: list[dict], stats_summary: dict)
         "  \\foreach \\y in {0.0, 0.5, 1.0, 1.4}",
         "    \\draw (0, \\y) -- (-0.015, \\y) node[left, font=\\footnotesize] {\\y};",
         "\\end{tikzpicture}",
-        f"\\caption{{Empirical density histogram of normalized attempts $u = A/K^L$ ($N = {n_total}$) across all test groups, confirming uniform keyspace coverage $U(0, 1)$.}}",
+        f"\\caption{{Empirical density of normalized attempts $u = A/K^L$ ($n = {n_total}$) with the continuous uniform reference.}}",
         "\\label{fig:norm_attempts_hist}",
         "\\end{figure}",
     ]
@@ -119,7 +118,7 @@ def generate_tikz_plots(figures_dir: str, rows: list[dict], stats_summary: dict)
     )
     tikz_reg += [
         "\\end{tikzpicture}",
-        "\\caption{Axis 1: Log-linear regression of cracking time $\\log_{10}(T_{\\text{ms}})$ versus password length $L$ ($K=70$), showing exponential slope $\\hat{\\beta}_1 \\approx 1.845$ matching base $K=70$.}",
+        f"\\caption{{Axis 1. Log-linear fit for cracking time at $K=70$. The fitted slope is {b1:.4f} and the theoretical reference is {stats_summary['axis1_length_regression']['theoretical_b1_log10']:.4f}.}}",
         "\\label{fig:axis1_regression}",
         "\\end{figure}",
     ]
@@ -140,6 +139,11 @@ def generate_tikz_plots(figures_dir: str, rows: list[dict], stats_summary: dict)
         ("alphanumeric", "Alphanum (62)", 5.6),
         ("full", "Full (70)", 7.8),
     ]
+    y_min = math.floor(min(min(values) for values in by_ck.values()))
+    y_max = math.ceil(max(max(values) for values in by_ck.values()))
+
+    def map_box_y(value: float) -> float:
+        return (value - y_min) / max(1, y_max - y_min) * 5.0
 
     tikz_box = [
         "% Figure 3: Axis 2 - Boxplot of log10(Time) across Charset Complexities at L=4",
@@ -149,9 +153,8 @@ def generate_tikz_plots(figures_dir: str, rows: list[dict], stats_summary: dict)
         "  \\draw[->, thick] (0,0) -- (9.5,0) node[right, font=\\small] {Complexity Level ($K$)};",
         "  \\draw[->, thick] (0,0) -- (0,5.8) node[above, font=\\small] {$\\log_{10}(T_{\\text{ms}})$};",
     ]
-    # Y-axis ticks from 0 to 5
-    for y_val in range(0, 6):
-        yv = (y_val / 5.0) * 5.0
+    for y_val in range(y_min, y_max + 1):
+        yv = map_box_y(y_val)
         tikz_box.append(
             f"  \\draw[gray!20] (0,{yv:.2f}) -- (9.0,{yv:.2f});"
             f"  \\draw (0,{yv:.2f}) -- (-0.1,{yv:.2f}) node[left, font=\\footnotesize] {{{y_val}}};"
@@ -163,11 +166,7 @@ def generate_tikz_plots(figures_dir: str, rows: list[dict], stats_summary: dict)
         q1, q3 = qs[0], qs[2]
         low, high = vals[0], vals[-1]
 
-        y_med = (med / 5.0) * 5.0
-        y_q1 = (q1 / 5.0) * 5.0
-        y_q3 = (q3 / 5.0) * 5.0
-        y_low = (low / 5.0) * 5.0
-        y_high = (high / 5.0) * 5.0
+        y_med, y_q1, y_q3, y_low, y_high = map(map_box_y, (med, q1, q3, low, high))
 
         tikz_box.append(f"  % Group {ck}")
         tikz_box.append(f"  \\draw[thick] ({xc}, {y_q3:.2f}) -- ({xc}, {y_high:.2f});")
@@ -184,7 +183,7 @@ def generate_tikz_plots(figures_dir: str, rows: list[dict], stats_summary: dict)
 
     tikz_box += [
         "\\end{tikzpicture}",
-        "\\caption{Axis 2: Distribution of log-transformed cracking time $\\log_{10}(T_{\\text{ms}})$ across 4 character set complexity levels ($L=4$), showing statistically significant escalation ($p < 10^{-15}$).}",
+        "\\caption{Axis 2. Distribution of log-transformed cracking time by character set at $L=4$. Whiskers show the observed minimum and maximum.}",
         "\\label{fig:axis2_boxplot}",
         "\\end{figure}",
     ]
@@ -224,15 +223,16 @@ def generate_tikz_plots(figures_dir: str, rows: list[dict], stats_summary: dict)
         yv = (t_val / max_T) * 5.2
         tikz_att.append(f"  \\fill[teal!70!black, opacity=0.55] ({xv:.3f},{yv:.3f}) circle (1.4pt);")
 
+    y_line_start = g0 / max_T * 5.2
     y_line_end = ((g0 + g1 * max_A) / max_T) * 5.2
     tikz_att.append(
-        f"  \\draw[red!80!black, very thick] (0,0) -- (9.8,{y_line_end:.3f}) "
+        f"  \\draw[red!80!black, very thick] (0,{y_line_start:.3f}) -- (9.8,{y_line_end:.3f}) "
         f"node[pos=0.6, above left, font=\\small, text=red!80!black] "
-        f"{{$\\widehat{{T}} = {g1*1000:.3f}\\,\\mu\\text{{s}} \\times A\\; (R^2 = {m_glob['r_squared']:.4f})$}};"
+        f"{{{g1*1000:.3f} $\\mu$s per attempt, $R^2 = {m_glob['r_squared']:.4f}$}};"
     )
     tikz_att += [
         "\\end{tikzpicture}",
-        "\\caption{Deterministic linear relationship between candidate brute-force attempts $A$ and execution time $T$, confirming uniform per-hash latency across all test conditions.}",
+        "\\caption{Measured execution time and the pooled linear fit against the number of attempts.}",
         "\\label{fig:time_vs_attempts}",
         "\\end{figure}",
     ]
@@ -249,7 +249,7 @@ def try_matplotlib(figures_dir: str, rows: list[dict]) -> bool:
     # Simple export of figure 1 as high-res PNG
     u_vals = [float(r["norm_attempts"]) for r in rows]
     fig, ax = plt.subplots(figsize=(6.5, 4.0))
-    ax.hist(u_vals, bins=10, density=True, color="#4C72B0", edgecolor="black", alpha=0.75)
+    ax.hist(u_vals, bins=10, range=(0, 1), density=True, color="#4C72B0", edgecolor="black", alpha=0.75)
     ax.axhline(1.0, color="#C44E52", linestyle="--", linewidth=2)
     ax.set_xlabel("Normalized Attempts $u = A / K^L$")
     ax.set_ylabel("Density")

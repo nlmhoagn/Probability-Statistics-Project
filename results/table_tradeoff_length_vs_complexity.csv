@@ -1,6 +1,6 @@
-strategy,charset_complexity,length_L,keyspace_size,mean_cracking_time_sec,relative_strength_vs_PIN,security_assessment
-Baseline 4-digit PIN,Digits (K=10),4,10000,0.00414,1.0,Extremely vulnerable (< 0.01s)
-Expand to Full Symbols (Keep L=4),Full Special (K=70),4,24010000,11.614,2401.0,"Moderate protection (~2,401x stronger)"
-Extend Length to 6 Digits (Keep K=10),Digits (K=10),6,1000000,0.5,100.0,Weak (Cracked in ~0.5s)
-Extend Length to 8 Digits (Keep K=10),Digits (K=10),8,100000000,50.0,10000.0,Surpasses 4-char full symbol password!
-Extend Length to 8 Full Characters,Full Special (K=70),8,576480100000000,288240050.0,57648010000.0,High security (> 900 years on CPU)
+charset_key,charset_size_K,length_L,keyspace_size,keyspace_ratio_vs_4_digit_pin,measured_mean_time_sec,projected_mean_time_sec,projection_attempts_per_sec
+digits,10,4,10000,1.0,0.004142798333333334,,
+full,70,4,24010000,2401.0,11.613541085000001,,
+digits,10,6,1000000,100.0,,0.5000005,1000000
+digits,10,8,100000000,10000.0,,50.0000005,1000000
+full,70,8,576480100000000,57648010000.0,,288240050.0000005,1000000

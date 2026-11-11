@@ -8,9 +8,10 @@
 \caption{Axis 1: Experimental attempts ($A$) and cracking time ($T$, ms) across password lengths $L$ on full charset ($K=70$).}
 \label{tab:axis1_stats}
 \small
+\setlength{\tabcolsep}{3pt}
 \begin{tabular}{@{}cccccccc@{}}
 \toprule
-\textbf{$L$} & \textbf{$N = 70^L$} & \textbf{Theo. $\mathbb{E}[A]$} & \textbf{Emp. $\bar{A}$} & \textbf{95\% CI for $\mu_A$} & \textbf{$t$-stat} & \textbf{$p$-value} & \textbf{Emp. $\bar{T}$ (ms)} \\
+$L$ & $N$ & $\mathbb{E}[A]$ & $\bar{A}$ & 95\% CI for $\mu_A$ & $t$ & $p$ & $\bar{T}$ (ms) \\
 \midrule
 1 & 70 & 35.5 & 32.3 & $[27.2,\; 37.5]$ & -1.24 & 0.221 & 0.0291 \\
 2 & 4,900 & 2,450.5 & 2,606.7 & $[2,231.3,\; 2,982.0]$ & 0.83 & 0.408 & 2.3998 \\
@@ -23,15 +24,15 @@
 % --- Table 2: Axis 1 - Empirical Growth Ratios (Section 4.6) ---
 \begin{table}[htbp]
 \centering
-\caption{Axis 1: Empirical growth ratios when increasing password length $L \to L+1$ (Theoretical multiplier $K=70$).}
+\caption{Axis 1: Empirical growth ratios and expected attempt ratios when increasing password length $L \to L+1$.}
 \label{tab:axis1_growth}
 \begin{tabular}{@{}ccccc@{}}
 \toprule
-\textbf{Transition} & \textbf{Theoretical Factor ($K$)} & \textbf{Mean Attempts Ratio} & \textbf{Mean Time Ratio} & \textbf{Median Time Ratio} \\
+\textbf{Transition} & \textbf{Theory} & \textbf{Mean attempts} & \textbf{Mean time} & \textbf{Median time} \\
 \midrule
-$L=1 -> L=2$ & 70.0 & 80.70 & 82.47 & 85.78 \\
-$L=2 -> L=3$ & 70.0 & 69.72 & 76.06 & 70.55 \\
-$L=3 -> L=4$ & 70.0 & 61.39 & 63.62 & 71.28 \\
+$L=1 \to L=2$ & 69.03 & 80.66 & 82.52 & 85.78 \\
+$L=2 \to L=3$ & 69.99 & 69.72 & 76.06 & 70.55 \\
+$L=3 \to L=4$ & 70.00 & 61.39 & 63.62 & 71.28 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -42,14 +43,14 @@ $L=3 -> L=4$ & 70.0 & 61.39 & 63.62 & 71.28 \\
 \caption{Axis 2: Comparison of cracking time and security gain across 4 character set complexity levels ($L=4$).}
 \label{tab:axis2_stats}
 \small
-\begin{tabular}{@{}lcccccc@{}}
+\begin{tabular}{@{}lccccc@{}}
 \toprule
-\textbf{Complexity Level} & \textbf{$K$} & \textbf{$N = K^4$} & \textbf{Emp. $\bar{T}$ (ms)} & \textbf{Med($T$) (ms)} & \textbf{Theo. Gain} & \textbf{Emp. Gain} \\
+\textbf{Charset} & \textbf{$K$} & \textbf{$N=K^4$} & \textbf{$\bar{T}$ (ms)} & \textbf{95\% CI (ms)} & \textbf{Time ratio} \\
 \midrule
-Digits (0-9) & 10 & 10,000 & 4.1428 & 4.1316 & 1.0$\times$ & 1.0$\times$ \\
-Lowercase (a-z) & 26 & 456,976 & 282.5414 & 288.2120 & 45.7$\times$ & 68.2$\times$ \\
-Alphanumeric (0-9, a-z, A-Z) & 62 & 14,776,336 & 8752.4784 & 9146.6401 & 1,477.6$\times$ & 2,112.7$\times$ \\
-Full / Special (0-9, a-z, A-Z, !@#$%^&*) & 70 & 24,010,000 & 11613.5411 & 11344.2848 & 2,401.0$\times$ & 2,803.3$\times$ \\
+Digits & 10 & 10,000 & 4.14 & $[3.47,\; 4.82]$ & 1.0$\times$ \\
+Lowercase & 26 & 456,976 & 282.54 & $[244.16,\; 320.92]$ & 68.2$\times$ \\
+Alphanumeric & 62 & 14,776,336 & 8752.48 & $[6438.14,\; 11066.82]$ & 2,112.7$\times$ \\
+Full & 70 & 24,010,000 & 11613.54 & $[8884.54,\; 14342.55]$ & 2,803.3$\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -63,7 +64,7 @@ Full / Special (0-9, a-z, A-Z, !@#$%^&*) & 70 & 24,010,000 & 11613.5411 & 11344.
 \toprule
 \textbf{Source of Variation} & \textbf{SS} & \textbf{df} & \textbf{MS} & \textbf{$F$-statistic} & \textbf{$p$-value} \\
 \midrule
-Between Groups (Complexity) & 296.342 & 3 & 98.781 & 737.94 & $< 10^{-15}$ \\
+Between Groups (Complexity) & 296.342 & 3 & 98.781 & 737.94 & 6.64e-92 \\
 Within Groups (Error)       & 20.882  & 156  & 0.1339 & & \\
 \midrule
 Total                        & 317.224   & 159 & & & \\
@@ -74,18 +75,18 @@ Total                        & 317.224   & 159 & & & \\
 % --- Table 5: Security Trade-Off: Length (L) vs Complexity (K) (Section 4.10) ---
 \begin{table}[htbp]
 \centering
-\caption{Security trade-off analysis: Comparing character set expansion versus password length extension.}
+\caption{Search space and time by password configuration. Projected times assume $10^6$ attempts per second.}
 \label{tab:tradeoff_security}
 \small
-\begin{tabular}{@{}lccccc@{}}
+\begin{tabular}{@{}lcccccc@{}}
 \toprule
-\textbf{Configuration Strategy} & \textbf{Complexity} & \textbf{$L$} & \textbf{Keyspace $N$} & \textbf{Est. Mean Time} & \textbf{Rel. Strength vs PIN} \\
+\textbf{Charset} & \textbf{$K$} & \textbf{$L$} & \textbf{Keyspace} & \textbf{Keyspace ratio} & \textbf{Measured (s)} & \textbf{Projected (s)} \\
 \midrule
-Baseline 4-digit PIN & Digits (K=10) & 4 & 10,000 & 0.0041 s & 1.0$\times$ \\
-Expand to Full Symbols (Keep L=4) & Full Special (K=70) & 4 & 24,010,000 & 11.6140 s & 2,401.0$\times$ \\
-Extend Length to 6 Digits (Keep K=10) & Digits (K=10) & 6 & 1,000,000 & 0.5000 s & 100.0$\times$ \\
-Extend Length to 8 Digits (Keep K=10) & Digits (K=10) & 8 & 100,000,000 & 50.0000 s & 10,000.0$\times$ \\
-Extend Length to 8 Full Characters & Full Special (K=70) & 8 & 576,480,100,000,000 & 80066.7 hours & 57,648,010,000.0$\times$ \\
+Digits & 10 & 4 & 1e+04 & 1$\times$ & 0.004143 & -- \\
+Full & 70 & 4 & 2.401e+07 & 2401$\times$ & 11.61 & -- \\
+Digits & 10 & 6 & 1e+06 & 100$\times$ & -- & 0.5 \\
+Digits & 10 & 8 & 1e+08 & 1e+04$\times$ & -- & 50 \\
+Full & 70 & 8 & 5.765e+14 & 5.765e+10$\times$ & -- & 2.882e+08 \\
 \bottomrule
 \end{tabular}
 \end{table}

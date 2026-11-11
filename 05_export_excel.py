@@ -5,13 +5,8 @@
 Zero-Dependency OpenXML (.xlsx) Exporter (Guideline Section 10)
 MT2013 Course Project - Class CC09 (2-Factor Experimental Design)
 
-Generates `data/MT2013_CC09_Data.xlsx` with multiple structured worksheets:
-  1. Summary_All_Groups
-  2. Axis1_Length_Analysis
-  3. Axis2_Charset_ANOVA
-  4. Security_TradeOff
-  5. Processed_Data
-  6. Raw_Data
+Generates `data/MT2013_CC09_Data.xlsx` with raw and processed observations,
+group summaries, ANOVA, pairwise comparisons, and the sensitivity analysis.
 """
 
 import csv
@@ -64,8 +59,6 @@ def build_sheet_xml(rows: list[list[str]]) -> str:
 
 
 def read_csv_rows(filepath: str) -> list[list[str]]:
-    if not os.path.exists(filepath):
-        return [["Status"], [f"File {os.path.basename(filepath)} not found"]]
     with open(filepath, mode="r", encoding="utf-8") as f:
         return list(csv.reader(f))
 
@@ -124,7 +117,10 @@ def main() -> None:
     sheets = [
         ("Summary_All_Groups", read_csv_rows(os.path.join(res_dir, "summary_all_groups.csv"))),
         ("Axis1_Length_Analysis", read_csv_rows(os.path.join(res_dir, "table_axis1_length_stats.csv"))),
-        ("Axis2_Charset_ANOVA", read_csv_rows(os.path.join(res_dir, "table_axis2_charset_stats.csv"))),
+        ("Axis2_Charset_Stats", read_csv_rows(os.path.join(res_dir, "table_axis2_charset_stats.csv"))),
+        ("Axis2_Charset_ANOVA", read_csv_rows(os.path.join(res_dir, "table_axis2_anova.csv"))),
+        ("Axis2_Pairwise", read_csv_rows(os.path.join(res_dir, "table_axis2_pairwise.csv"))),
+        ("Sensitivity", read_csv_rows(os.path.join(res_dir, "table_sensitivity.csv"))),
         ("Security_TradeOff", read_csv_rows(os.path.join(res_dir, "table_tradeoff_length_vs_complexity.csv"))),
         ("Processed_Data", read_csv_rows(os.path.join(data_dir, "processed_experiment_data.csv"))),
         ("Raw_Data", read_csv_rows(os.path.join(data_dir, "raw_experiment_data.csv"))),
@@ -132,7 +128,7 @@ def main() -> None:
 
     out_xlsx = os.path.join(data_dir, "MT2013_CC09_Data.xlsx")
     create_xlsx(out_xlsx, sheets)
-    print(f"Exported 6-sheet workbook -> {out_xlsx}")
+    print(f"Exported {len(sheets)}-sheet workbook -> {out_xlsx}")
 
 
 if __name__ == "__main__":

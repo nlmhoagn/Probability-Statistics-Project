@@ -6,7 +6,7 @@ Data Validation, Preprocessing, and Feature Engineering Script (Section 2.8)
 MT2013 Course Project - Class CC09
 
 Performs:
-  1. Completeness and domain validity checks (1 <= A <= K^L, T > 0).
+  1. Validate observation IDs, target ranks, measured times, and sample counts.
   2. Multi-factor tagging:
      - in_axis1_length (boolean: K=70, L in {1, 2, 3, 4})
      - in_axis2_charset (boolean: L=4, K in {10, 26, 62, 70})
@@ -15,7 +15,7 @@ Performs:
      - Theoretical mean & SD: (K^L + 1)/2 and sqrt((K^(2L) - 1)/12)
      - Log-transformations: ln(T_ms), log10(T_ms), ln(A), log10(A)
      - Latency per hash: us_per_attempt = (T_ms * 1000) / A
-  4. OS scheduling jitter detection (Tukey's IQR rule on per-hash latency).
+  4. Flag high per-attempt latency using an upper IQR fence within each group.
   5. Exports cleaned dataset to `data/processed_experiment_data.csv`.
 """
 
@@ -24,7 +24,9 @@ import json
 import math
 import os
 import statistics
-from collections import defaultdict
+from collections import Counter, defaultdict
+
+from config import CHARSETS, HEAVY_SEARCH_SPACE_THRESHOLD
 
 
 def compute_quartiles(values: list[float]) -> tuple[float, float, float]:
@@ -42,6 +44,7 @@ def main() -> None:
     raw_path = os.path.join(base_dir, "data", "raw_experiment_data.csv")
     proc_path = os.path.join(base_dir, "data", "processed_experiment_data.csv")
     report_path = os.path.join(base_dir, "logs", "preprocessing_report.json")
+    config_path = os.path.join(base_dir, "logs", "experiment_config.json")
 
     if not os.path.exists(raw_path):
         raise FileNotFoundError(f"Raw data not found at {raw_path}. Run 01_collect_data.py first.")
@@ -54,11 +57,17 @@ def main() -> None:
     missing_count = 0
     invalid_domain_count = 0
     valid_rows = []
+    seen_ids = set()
 
     for r in raw_rows:
         if any(v is None or str(v).strip() == "" for v in r.values()):
             missing_count += 1
             continue
+
+        obs_id = int(r["obs_id"])
+        if obs_id in seen_ids:
+            raise ValueError(f"Duplicate observation ID: {obs_id}")
+        seen_ids.add(obs_id)
 
         K = int(r["charset_size"])
         L = int(r["length"])
@@ -66,11 +75,28 @@ def main() -> None:
         attempts = int(r["attempts"])
         time_ms = float(r["time_ms"])
         time_sec = float(r["time_sec"])
+        throughput = float(r["throughput_hash_s"])
 
         # Domain validity: 1 <= A <= K^L, T > 0, K^L consistent
-        if not (1 <= attempts <= space and time_ms > 0 and space == K ** L):
+        if not (
+            L > 0 and 1 <= attempts <= space and space == K ** L
+            and math.isfinite(time_ms) and time_ms > 0
+            and math.isfinite(time_sec) and time_sec > 0
+            and math.isclose(time_ms, time_sec * 1000.0)
+            and math.isfinite(throughput) and throughput > 0
+        ):
             invalid_domain_count += 1
             continue
+
+        alphabet = CHARSETS[r["charset_key"]]["chars"]
+        target = r["target_sample"].removeprefix("'")
+        if K != len(alphabet) or len(target) != L or any(char not in alphabet for char in target):
+            raise ValueError(f"Invalid target or character set at observation {obs_id}")
+        rank = 0
+        for char in target:
+            rank = rank * K + alphabet.index(char)
+        if attempts != rank + 1:
+            raise ValueError(f"Attempt count does not match target rank at observation {obs_id}")
 
         us_per_attempt = (time_ms * 1000.0) / attempts
         in_axis1 = 1 if (r["charset_key"] == "full" and L in (1, 2, 3, 4)) else 0
@@ -78,7 +104,7 @@ def main() -> None:
 
         valid_rows.append(
             {
-                "obs_id": int(r["obs_id"]),
+                "obs_id": obs_id,
                 "axis_tag": r["axis"],
                 "in_axis1_length": in_axis1,
                 "in_axis2_charset": in_axis2,
@@ -100,11 +126,27 @@ def main() -> None:
                 "ln_attempts": round(math.log(attempts), 6),
                 "log10_attempts": round(math.log10(attempts), 6),
                 "us_per_attempt": round(us_per_attempt, 6),
-                "throughput_khash_s": round(float(r["throughput_hash_s"]) / 1000.0, 2),
+                "throughput_khash_s": round(throughput / 1000.0, 2),
             }
         )
 
-    # Detect OS jitter per group
+    group_counts = Counter((r["charset_key"], r["length"]) for r in valid_rows)
+    if os.path.exists(config_path):
+        with open(config_path, encoding="utf-8") as f:
+            config = json.load(f)
+        parameters = config["parameters"]
+        expected_counts = {
+            (group["charset"], group["L"]): parameters[
+                "samples_heavy" if group["search_space"] > HEAVY_SEARCH_SPACE_THRESHOLD else "samples_fast"
+            ]
+            for group in config["groups_surveyed"]
+        }
+        if group_counts != expected_counts or len(valid_rows) != parameters["total_observations"]:
+            raise ValueError(f"Valid sample counts {dict(group_counts)} differ from the experiment log {expected_counts}")
+    if not valid_rows:
+        raise ValueError("No valid observations in the input data")
+
+    # Flag unusually high per-attempt latency within each group.
     by_group = defaultdict(list)
     for r in valid_rows:
         key = (r["charset_key"], r["length"])
@@ -120,6 +162,8 @@ def main() -> None:
             "median_us": round(med, 4),
             "q3_us": round(q3, 4),
             "upper_fence_us": round(upper_fence, 4),
+            "sample_size": len(latencies),
+            "flagged_count": 0,
         }
 
     jitter_count = 0
@@ -129,6 +173,7 @@ def main() -> None:
         is_jitter = 1 if r["us_per_attempt"] > fence else 0
         r["os_jitter_flag"] = is_jitter
         jitter_count += is_jitter
+        bounds_by_group[key_str]["flagged_count"] += is_jitter
 
     fieldnames = list(valid_rows[0].keys())
     with open(proc_path, mode="w", newline="", encoding="utf-8") as f:

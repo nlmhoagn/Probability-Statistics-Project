@@ -26,7 +26,7 @@ import os
 import random
 import shutil
 import time
-from config import CHARSETS, AXIS_1_CONFIG, AXIS_2_CONFIG, get_hardware_environment
+from config import CHARSETS, HEAVY_SEARCH_SPACE_THRESHOLD, get_hardware_environment
 
 
 def run_single_trial(target: str, alphabet: str) -> tuple[int, float]:
@@ -93,6 +93,8 @@ def main() -> None:
         help="Master random seed for full experiment reproducibility (default: 202610).",
     )
     args = parser.parse_args()
+    if min(args.samples_fast, args.samples_heavy) < 2:
+        parser.error("--samples-fast and --samples-heavy must each be at least 2")
 
     base_dir = os.path.dirname(os.path.abspath(__file__))
     data_dir = os.path.join(base_dir, "data")
@@ -155,7 +157,9 @@ def main() -> None:
         alphabet = c_info["chars"]
         K = c_info["K"]
         search_space = K ** length
-        n_samples = args.samples_heavy if search_space > 500_000 else args.samples_fast
+        n_samples = (
+            args.samples_heavy if search_space > HEAVY_SEARCH_SPACE_THRESHOLD else args.samples_fast
+        )
 
         print(
             f"Collecting: [{c_info['name']:<35}] L={length} | "

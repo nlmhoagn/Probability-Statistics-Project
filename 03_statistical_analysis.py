@@ -27,6 +27,7 @@ import math
 import os
 import statistics
 from collections import defaultdict
+from itertools import combinations
 
 
 # ==============================================================================
@@ -232,6 +233,42 @@ def compute_one_way_anova(group_data: dict[str, list[float]]) -> dict:
     }
 
 
+def compare_charsets(group_data: dict[str, list[float]]) -> list[dict]:
+    """Compare mean log10 times using Welch t-tests and Holm adjustment."""
+    comparisons = []
+    for (first, x), (second, y) in combinations(group_data.items(), 2):
+        difference = statistics.mean(y) - statistics.mean(x)
+        vx = statistics.variance(x) / len(x)
+        vy = statistics.variance(y) / len(y)
+        t_stat = None
+        df = None
+        p_value = None
+        if vx + vy > 0:
+            t_stat = difference / math.sqrt(vx + vy)
+            df = (vx + vy) ** 2 / (vx**2 / (len(x) - 1) + vy**2 / (len(y) - 1))
+            p_value = student_t_two_tailed_pvalue(t_stat, df)
+        comparisons.append({
+            "reference_charset": first,
+            "compared_charset": second,
+            "mean_log10_time_difference": difference,
+            "geometric_mean_time_ratio": 10**difference,
+            "welch_t": t_stat,
+            "welch_df": df,
+            "p_value": p_value,
+            "holm_adjusted_p_value": None,
+        })
+
+    tested = sorted(
+        (row for row in comparisons if row["p_value"] is not None),
+        key=lambda row: row["p_value"],
+    )
+    adjusted = 0.0
+    for index, row in enumerate(tested):
+        adjusted = max(adjusted, min(1.0, (len(comparisons) - index) * row["p_value"]))
+        row["holm_adjusted_p_value"] = adjusted
+    return comparisons
+
+
 # ==============================================================================
 # Main Analysis Pipeline
 # ==============================================================================
@@ -304,6 +341,7 @@ def main() -> None:
 
     axis1_desc = []
     axis1_growth = []
+    axis1_centers = {}
 
     for L in sorted(axis1_by_L.keys()):
         g = axis1_by_L[L]
@@ -312,7 +350,6 @@ def main() -> None:
         t_crit = student_t_critical_95(df)
         space = 70 ** L
         theo_mu_a = (space + 1) / 2.0
-        theo_sd_a = math.sqrt((space ** 2 - 1) / 12.0)
 
         att_vals = [int(r["attempts"]) for r in g]
         time_vals = [float(r["time_ms"]) for r in g]
@@ -323,6 +360,8 @@ def main() -> None:
         ci_a = (mean_a - t_crit * se_a, mean_a + t_crit * se_a)
 
         mean_t = statistics.mean(time_vals)
+        median_t = statistics.median(time_vals)
+        axis1_centers[L] = (mean_a, mean_t, median_t)
         sd_t = statistics.stdev(time_vals)
         se_t = sd_t / math.sqrt(n)
         ci_t = (mean_t - t_crit * se_t, mean_t + t_crit * se_t)
@@ -344,23 +383,22 @@ def main() -> None:
                 "emp_mean_time_ms": round(mean_t, 4),
                 "ci95_time_low_ms": round(ci_t[0], 4),
                 "ci95_time_high_ms": round(ci_t[1], 4),
-                "median_time_ms": round(statistics.median(time_vals), 4),
+                "median_time_ms": round(median_t, 4),
             }
         )
 
     for i in range(len(axis1_desc) - 1):
         c_r = axis1_desc[i]
         n_r = axis1_desc[i + 1]
-        ratio_att = n_r["emp_mean_attempts"] / c_r["emp_mean_attempts"]
-        ratio_time = n_r["emp_mean_time_ms"] / c_r["emp_mean_time_ms"]
-        ratio_med_time = n_r["median_time_ms"] / c_r["median_time_ms"]
+        mean_a, mean_t, median_t = axis1_centers[c_r["length"]]
+        next_mean_a, next_mean_t, next_median_t = axis1_centers[n_r["length"]]
         axis1_growth.append(
             {
                 "transition": f"L={c_r['length']} -> L={n_r['length']}",
-                "theoretical_factor": 70.0,
-                "empirical_attempts_ratio": round(ratio_att, 2),
-                "empirical_mean_time_ratio": round(ratio_time, 2),
-                "empirical_median_time_ratio": round(ratio_med_time, 2),
+                "theoretical_factor": (n_r["search_space"] + 1) / (c_r["search_space"] + 1),
+                "empirical_attempts_ratio": round(next_mean_a / mean_a, 2),
+                "empirical_mean_time_ratio": round(next_mean_t / mean_t, 2),
+                "empirical_median_time_ratio": round(next_median_t / median_t, 2),
             }
         )
 
@@ -397,6 +435,8 @@ def main() -> None:
         mean_t = statistics.mean(time_vals)
         mean_a = statistics.mean(att_vals)
         q1_t, med_t, q3_t = calc_iqr(time_vals)
+        sd_t = statistics.stdev(time_vals)
+        margin = student_t_critical_95(len(g) - 1) * sd_t / math.sqrt(len(g))
 
         theo_mult = space / base_digits_space
         emp_mult = mean_t / base_digits_mean_time
@@ -410,7 +450,9 @@ def main() -> None:
                 "sample_size_n": len(g),
                 "mean_attempts": round(mean_a, 1),
                 "mean_time_ms": round(mean_t, 4),
-                "sd_time_ms": round(statistics.stdev(time_vals), 4),
+                "sd_time_ms": round(sd_t, 4),
+                "ci95_time_low_ms": round(mean_t - margin, 4),
+                "ci95_time_high_ms": round(mean_t + margin, 4),
                 "median_time_ms": round(med_t, 4),
                 "iqr_time_ms": round(q3_t - q1_t, 4),
                 "theoretical_security_gain": round(theo_mult, 1),
@@ -426,59 +468,39 @@ def main() -> None:
         for ck in ordered_keys
     }
     anova_res = compute_one_way_anova(anova_groups)
+    write_csv(os.path.join(results_dir, "table_axis2_anova.csv"), [anova_res])
+    write_csv(os.path.join(results_dir, "table_axis2_pairwise.csv"), compare_charsets(anova_groups))
+    # Median-centered Levene test for equality of variances on the ANOVA scale.
+    absolute_deviations = {}
+    for charset, values in anova_groups.items():
+        median = statistics.median(values)
+        absolute_deviations[charset] = [abs(value - median) for value in values]
+    levene_res = compute_one_way_anova(absolute_deviations)
 
     # --------------------------------------------------------------------------
     # 4. Length (L) vs Complexity (K) Security Trade-off Analysis
     # --------------------------------------------------------------------------
-    tradeoff_rows = [
-        {
-            "strategy": "Baseline 4-digit PIN",
-            "charset_complexity": "Digits (K=10)",
-            "length_L": 4,
-            "keyspace_size": 10 ** 4,
-            "mean_cracking_time_sec": round(base_digits_mean_time / 1000.0, 5),
-            "relative_strength_vs_PIN": 1.0,
-            "security_assessment": "Extremely vulnerable (< 0.01s)",
-        },
-        {
-            "strategy": "Expand to Full Symbols (Keep L=4)",
-            "charset_complexity": "Full Special (K=70)",
-            "length_L": 4,
-            "keyspace_size": 70 ** 4,
-            "mean_cracking_time_sec": round(
-                statistics.mean([float(r["time_ms"]) for r in axis2_by_ck["full"]]) / 1000.0, 3
+    # shortcut: use a fixed throughput scenario for projections, measure additional groups for empirical comparisons.
+    projection_rate = 1_000_000
+    tradeoff_rows = []
+    for charset, K, L in (
+        ("digits", 10, 4), ("full", 70, 4), ("digits", 10, 6),
+        ("digits", 10, 8), ("full", 70, 8),
+    ):
+        observed = group_map.get((charset, L))
+        space = K**L
+        tradeoff_rows.append({
+            "charset_key": charset,
+            "charset_size_K": K,
+            "length_L": L,
+            "keyspace_size": space,
+            "keyspace_ratio_vs_4_digit_pin": space / base_digits_space,
+            "measured_mean_time_sec": (
+                statistics.mean(float(r["time_ms"]) for r in observed) / 1000.0 if observed else None
             ),
-            "relative_strength_vs_PIN": round(70 ** 4 / 10 ** 4, 1),
-            "security_assessment": "Moderate protection (~2,401x stronger)",
-        },
-        {
-            "strategy": "Extend Length to 6 Digits (Keep K=10)",
-            "charset_complexity": "Digits (K=10)",
-            "length_L": 6,
-            "keyspace_size": 10 ** 6,
-            "mean_cracking_time_sec": round((10 ** 6 / 2) / 1_000_000, 3),
-            "relative_strength_vs_PIN": 100.0,
-            "security_assessment": "Weak (Cracked in ~0.5s)",
-        },
-        {
-            "strategy": "Extend Length to 8 Digits (Keep K=10)",
-            "charset_complexity": "Digits (K=10)",
-            "length_L": 8,
-            "keyspace_size": 10 ** 8,
-            "mean_cracking_time_sec": round((10 ** 8 / 2) / 1_000_000, 3),
-            "relative_strength_vs_PIN": 10000.0,
-            "security_assessment": "Surpasses 4-char full symbol password!",
-        },
-        {
-            "strategy": "Extend Length to 8 Full Characters",
-            "charset_complexity": "Full Special (K=70)",
-            "length_L": 8,
-            "keyspace_size": 70 ** 8,
-            "mean_cracking_time_sec": round((70 ** 8 / 2) / 1_000_000, 1),
-            "relative_strength_vs_PIN": round(70 ** 8 / 10 ** 4, 1),
-            "security_assessment": "High security (> 900 years on CPU)",
-        },
-    ]
+            "projected_mean_time_sec": (space + 1) / (2 * projection_rate) if not observed else None,
+            "projection_attempts_per_sec": projection_rate if not observed else None,
+        })
     write_csv(os.path.join(results_dir, "table_tradeoff_length_vs_complexity.csv"), tradeoff_rows)
 
     # --------------------------------------------------------------------------
@@ -487,6 +509,54 @@ def main() -> None:
     all_A = [float(r["attempts"]) for r in rows]
     all_T = [float(r["time_ms"]) for r in rows]
     ols_T_vs_A = fit_simple_ols(all_A, all_T)
+    fitted_by_id = {
+        r["obs_id"]: fitted for r, fitted in zip(axis1_rows, ols_log10_T["y_hat"])
+    }
+    residual_rows = []
+    for row, fitted_time, residual_time in zip(rows, ols_T_vs_A["y_hat"], ols_T_vs_A["residuals"]):
+        fitted_log = fitted_by_id.get(row["obs_id"])
+        residual_rows.append({
+            "obs_id": row["obs_id"],
+            "charset_key": row["charset_key"],
+            "length": row["length"],
+            "attempts": row["attempts"],
+            "time_ms": row["time_ms"],
+            "os_jitter_flag": row["os_jitter_flag"],
+            "fitted_time_ms": fitted_time,
+            "residual_time_ms": residual_time,
+            "log10_time_ms": row["log10_time_ms"],
+            "axis1_fitted_log10_time_ms": fitted_log,
+            "axis1_residual_log10_time_ms": (
+                float(row["log10_time_ms"]) - fitted_log if fitted_log is not None else None
+            ),
+        })
+    write_csv(os.path.join(results_dir, "residuals_data.csv"), residual_rows)
+
+    unflagged = [r for r in rows if r["os_jitter_flag"] == "0"]
+    unflagged_axis1 = [r for r in unflagged if r["in_axis1_length"] == "1"]
+    filtered_length = fit_simple_ols(
+        [float(r["length"]) for r in unflagged_axis1],
+        [float(r["log10_time_ms"]) for r in unflagged_axis1],
+    )
+    filtered_speed = fit_simple_ols(
+        [float(r["attempts"]) for r in unflagged],
+        [float(r["time_ms"]) for r in unflagged],
+    )
+    sensitivity = []
+    for scenario, length_model, speed_model in (
+        ("all_observations", ols_log10_T, ols_T_vs_A),
+        ("excluding_flagged", filtered_length, filtered_speed),
+    ):
+        sensitivity.append({
+            "scenario": scenario,
+            "axis1_n": length_model["n"],
+            "axis1_log10_slope": length_model["b1"],
+            "axis1_r_squared": length_model["r_squared"],
+            "global_n": speed_model["n"],
+            "global_us_per_attempt": speed_model["b1"] * 1000.0,
+            "global_r_squared": speed_model["r_squared"],
+        })
+    write_csv(os.path.join(results_dir, "table_sensitivity.csv"), sensitivity)
 
     # Clean summary dict
     def clean_dict(d: dict) -> dict:
@@ -502,6 +572,7 @@ def main() -> None:
             "implied_growth_factor_exp": round(math.exp(ols_ln_T["b1"]), 2),
         },
         "axis2_charset_anova": anova_res,
+        "axis2_log_time_levene": {key: levene_res[key] for key in ("f_stat", "p_value")},
         "global_hashing_speed": {
             **clean_dict(ols_T_vs_A),
             "us_per_attempt": round(ols_T_vs_A["b1"] * 1000.0, 5),
@@ -515,13 +586,11 @@ def main() -> None:
     # Generate LaTeX tables
     generate_latex_booktabs(
         os.path.join(results_dir, "latex_tables.tex"),
-        summary_rows,
         axis1_desc,
         axis1_growth,
         axis2_desc,
         anova_res,
         tradeoff_rows,
-        full_report,
     )
 
     print("=" * 75)
@@ -562,13 +631,11 @@ def main() -> None:
 
 def generate_latex_booktabs(
     filepath: str,
-    summary_rows: list[dict],
     axis1_desc: list[dict],
     axis1_growth: list[dict],
     axis2_desc: list[dict],
     anova_res: dict,
     tradeoff_rows: list[dict],
-    full_report: dict,
 ) -> None:
     lines = [
         "% ==============================================================================",
@@ -581,9 +648,10 @@ def generate_latex_booktabs(
         "\\caption{Axis 1: Experimental attempts ($A$) and cracking time ($T$, ms) across password lengths $L$ on full charset ($K=70$).}",
         "\\label{tab:axis1_stats}",
         "\\small",
+        "\\setlength{\\tabcolsep}{3pt}",
         "\\begin{tabular}{@{}cccccccc@{}}",
         "\\toprule",
-        "\\textbf{$L$} & \\textbf{$N = 70^L$} & \\textbf{Theo. $\\mathbb{E}[A]$} & \\textbf{Emp. $\\bar{A}$} & \\textbf{95\\% CI for $\\mu_A$} & \\textbf{$t$-stat} & \\textbf{$p$-value} & \\textbf{Emp. $\\bar{T}$ (ms)} \\\\",
+        "$L$ & $N$ & $\\mathbb{E}[A]$ & $\\bar{A}$ & 95\\% CI for $\\mu_A$ & $t$ & $p$ & $\\bar{T}$ (ms) \\\\",
         "\\midrule",
     ]
     for r in axis1_desc:
@@ -600,16 +668,17 @@ def generate_latex_booktabs(
         "% --- Table 2: Axis 1 - Empirical Growth Ratios (Section 4.6) ---",
         "\\begin{table}[htbp]",
         "\\centering",
-        "\\caption{Axis 1: Empirical growth ratios when increasing password length $L \\to L+1$ (Theoretical multiplier $K=70$).}",
+        "\\caption{Axis 1: Empirical growth ratios and expected attempt ratios when increasing password length $L \\to L+1$.}",
         "\\label{tab:axis1_growth}",
         "\\begin{tabular}{@{}ccccc@{}}",
         "\\toprule",
-        "\\textbf{Transition} & \\textbf{Theoretical Factor ($K$)} & \\textbf{Mean Attempts Ratio} & \\textbf{Mean Time Ratio} & \\textbf{Median Time Ratio} \\\\",
+        "\\textbf{Transition} & \\textbf{Theory} & \\textbf{Mean attempts} & \\textbf{Mean time} & \\textbf{Median time} \\\\",
         "\\midrule",
     ]
     for r in axis1_growth:
+        transition = r["transition"].replace("->", "\\to")
         lines.append(
-            f"${r['transition']}$ & {r['theoretical_factor']:.1f} & "
+            f"${transition}$ & {r['theoretical_factor']:.2f} & "
             f"{r['empirical_attempts_ratio']:.2f} & {r['empirical_mean_time_ratio']:.2f} & "
             f"{r['empirical_median_time_ratio']:.2f} \\\\"
         )
@@ -624,16 +693,16 @@ def generate_latex_booktabs(
         "\\caption{Axis 2: Comparison of cracking time and security gain across 4 character set complexity levels ($L=4$).}",
         "\\label{tab:axis2_stats}",
         "\\small",
-        "\\begin{tabular}{@{}lcccccc@{}}",
+        "\\begin{tabular}{@{}lccccc@{}}",
         "\\toprule",
-        "\\textbf{Complexity Level} & \\textbf{$K$} & \\textbf{$N = K^4$} & \\textbf{Emp. $\\bar{T}$ (ms)} & \\textbf{Med($T$) (ms)} & \\textbf{Theo. Gain} & \\textbf{Emp. Gain} \\\\",
+        "\\textbf{Charset} & \\textbf{$K$} & \\textbf{$N=K^4$} & \\textbf{$\\bar{T}$ (ms)} & \\textbf{95\\% CI (ms)} & \\textbf{Time ratio} \\\\",
         "\\midrule",
     ]
     for r in axis2_desc:
         lines.append(
-            f"{r['charset_name']} & {r['charset_size_K']} & {r['search_space_N']:,} & "
-            f"{r['mean_time_ms']:.4f} & {r['median_time_ms']:.4f} & "
-            f"{r['theoretical_security_gain']:,.1f}$\\times$ & {r['empirical_security_gain']:,.1f}$\\times$ \\\\"
+            f"{r['charset_key'].title()} & {r['charset_size_K']} & {r['search_space_N']:,} & "
+            f"{r['mean_time_ms']:.2f} & $[{r['ci95_time_low_ms']:.2f},\\; {r['ci95_time_high_ms']:.2f}]$ & "
+            f"{r['empirical_security_gain']:,.1f}$\\times$ \\\\"
         )
     lines += [
         "\\bottomrule",
@@ -649,7 +718,7 @@ def generate_latex_booktabs(
         "\\toprule",
         "\\textbf{Source of Variation} & \\textbf{SS} & \\textbf{df} & \\textbf{MS} & \\textbf{$F$-statistic} & \\textbf{$p$-value} \\\\",
         "\\midrule",
-        f"Between Groups (Complexity) & {anova_res['ss_between']:.3f} & {anova_res['df_between']} & {anova_res['ms_between']:.3f} & {anova_res['f_stat']:.2f} & $< 10^{{-15}}$ \\\\",
+        f"Between Groups (Complexity) & {anova_res['ss_between']:.3f} & {anova_res['df_between']} & {anova_res['ms_between']:.3f} & {anova_res['f_stat']:.2f} & {anova_res['p_value']:.3g} \\\\",
         f"Within Groups (Error)       & {anova_res['ss_within']:.3f}  & {anova_res['df_within']}  & {anova_res['ms_within']:.4f} & & \\\\",
         "\\midrule",
         f"Total                        & {anova_res['ss_total']:.3f}   & {anova_res['n_total'] - 1} & & & \\\\",
@@ -660,19 +729,23 @@ def generate_latex_booktabs(
         "% --- Table 5: Security Trade-Off: Length (L) vs Complexity (K) (Section 4.10) ---",
         "\\begin{table}[htbp]",
         "\\centering",
-        "\\caption{Security trade-off analysis: Comparing character set expansion versus password length extension.}",
+        "\\caption{Search space and time by password configuration. Projected times assume $10^6$ attempts per second.}",
         "\\label{tab:tradeoff_security}",
         "\\small",
-        "\\begin{tabular}{@{}lccccc@{}}",
+        "\\begin{tabular}{@{}lcccccc@{}}",
         "\\toprule",
-        "\\textbf{Configuration Strategy} & \\textbf{Complexity} & \\textbf{$L$} & \\textbf{Keyspace $N$} & \\textbf{Est. Mean Time} & \\textbf{Rel. Strength vs PIN} \\\\",
+        "\\textbf{Charset} & \\textbf{$K$} & \\textbf{$L$} & \\textbf{Keyspace} & \\textbf{Keyspace ratio} & \\textbf{Measured (s)} & \\textbf{Projected (s)} \\\\",
         "\\midrule",
     ]
     for r in tradeoff_rows:
-        time_display = f"{r['mean_cracking_time_sec']:.4f} s" if r["mean_cracking_time_sec"] < 60 else f"{r['mean_cracking_time_sec']/3600:.1f} hours"
+        measured = r["measured_mean_time_sec"]
+        projected = r["projected_mean_time_sec"]
+        measured_display = f"{measured:.4g}" if measured is not None else "--"
+        projected_display = f"{projected:.4g}" if projected is not None else "--"
         lines.append(
-            f"{r['strategy']} & {r['charset_complexity']} & {r['length_L']} & "
-            f"{r['keyspace_size']:,} & {time_display} & {r['relative_strength_vs_PIN']:,.1f}$\\times$ \\\\"
+            f"{r['charset_key'].title()} & {r['charset_size_K']} & {r['length_L']} & "
+            f"{r['keyspace_size']:.4g} & {r['keyspace_ratio_vs_4_digit_pin']:.4g}$\\times$ & "
+            f"{measured_display} & {projected_display} \\\\"
         )
     lines += [
         "\\bottomrule",

@@ -48,8 +48,12 @@ Probability-Statistics-Project/
 │   ├── table_axis1_length_stats.csv        # Axis 1: Descriptive stats, 95% CIs, and t-tests
 │   ├── table_axis1_growth_factors.csv      # Axis 1: Growth ratios between L and L+1
 │   ├── table_axis2_charset_stats.csv       # Axis 2: Complexity stats and empirical gain
-│   ├── table_tradeoff_length_vs_complexity.csv # Practical security trade-off matrix
-│   ├── statistical_summary.json            # Regression models and ANOVA results
+│   ├── table_axis2_anova.csv              # ANOVA for log10 time
+│   ├── table_axis2_pairwise.csv           # Welch comparisons with Holm-adjusted p-values
+│   ├── table_tradeoff_length_vs_complexity.csv # Keyspace ratios, measurements and projections
+│   ├── residuals_data.csv                 # Row-level fitted values and residuals
+│   ├── table_sensitivity.csv              # Fits with and without high-latency flags
+│   ├── statistical_summary.json           # OLS, ANOVA and median-centered Levene check
 │   └── latex_tables.tex                    # Ready-to-use LaTeX booktabs tables
 ├── figures/
 │   ├── fig1_norm_attempts_hist.tex         # Histogram: Normalized attempts vs U(0,1)
@@ -67,7 +71,7 @@ Probability-Statistics-Project/
 
 Use Python 3.10 or newer (the included experiment was run with Python 3.14.5).
 The Python pipeline uses only the standard library; no pip dependencies are required.
-The optional `analysis.R` script uses base R's `stats` package.
+The optional `analysis.R` script uses base R's `stats` package and includes Tukey HSD.
 
 Clone the repository and enter its root directory:
 
@@ -82,16 +86,10 @@ Run the entire pipeline in sequence with a single command:
 python run_all.py
 ```
 
-This collects new timing measurements and overwrites the generated files in
-`data/`, `results/`, `figures/`, and `logs/`. To analyze the included measurements
-without collecting them again, run steps 02 through 05 below.
-
-Or execute custom runs (e.g. customized sample sizes):
+This collects fresh measurements and overwrites the generated outputs and experiment log.
+To reproduce the included results from the saved measurements, run these four steps:
 
 ```powershell
-# Custom run: 60 samples for fast groups, 30 for heavy groups (default: 20 heavy)
-python 01_collect_data.py --samples-fast 60 --samples-heavy 30 --seed 202610
-
 # Preprocess & feature engineering
 python 02_clean_and_preprocess.py
 
@@ -104,3 +102,13 @@ python 04_visualize.py
 # Export multi-sheet Excel file
 python 05_export_excel.py
 ```
+
+Preprocessing checks the exact target rank and the group counts against the
+experiment log. The main analyses retain all valid rows. The sensitivity table
+shows how the two regressions change when high-latency rows are excluded.
+Pairwise tests compare mean log times, and the exponentiated differences compare
+geometric mean times. The trade-off table lists the assumed throughput alongside
+each projection. A regression p-value stored as zero reflects floating-point underflow.
+
+Run the regression tests with `python -m unittest -v`. They build outputs in
+temporary directories from the included CSV and experiment log.

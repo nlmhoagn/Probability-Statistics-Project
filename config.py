@@ -18,6 +18,7 @@ from datetime import datetime
 # ==============================================================================
 # Special character subset chosen according to OWASP / NIST SP 800-63B standards
 SPECIAL_CHARS = "!@#$%^&*"
+HEAVY_SEARCH_SPACE_THRESHOLD = 500_000
 
 CHARSETS = {
     "digits": {

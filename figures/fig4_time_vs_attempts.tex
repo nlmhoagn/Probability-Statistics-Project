@@ -355,8 +355,8 @@
   \fill[teal!70!black, opacity=0.55] (5.789,3.135) circle (1.4pt);
   \fill[teal!70!black, opacity=0.55] (2.924,1.531) circle (1.4pt);
   \fill[teal!70!black, opacity=0.55] (3.773,1.635) circle (1.4pt);
-  \draw[red!80!black, very thick] (0,0) -- (9.8,5.302) node[pos=0.6, above left, font=\small, text=red!80!black] {$\widehat{T} = 1.081\,\mu\text{s} \times A\; (R^2 = 0.9898)$};
+  \draw[red!80!black, very thick] (0,0.002) -- (9.8,5.302) node[pos=0.6, above left, font=\small, text=red!80!black] {1.081 $\mu$s per attempt, $R^2 = 0.9898$};
 \end{tikzpicture}
-\caption{Deterministic linear relationship between candidate brute-force attempts $A$ and execution time $T$, confirming uniform per-hash latency across all test conditions.}
+\caption{Measured execution time and the pooled linear fit against the number of attempts.}
 \label{fig:time_vs_attempts}
 \end{figure}
